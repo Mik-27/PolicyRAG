@@ -1,4 +1,5 @@
 .venv
+.env
 chromedriver/
 documents/
 utils/__pycache__/
