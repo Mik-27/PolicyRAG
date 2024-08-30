@@ -29,7 +29,7 @@ class WebScraper:
     #         raise SystemExit(e)
         
         
-    def getFolderNames(self, driver):
+    def get_folder_names(self, driver):
         """
             Get all the folder names to parse.
         """
@@ -44,7 +44,7 @@ class WebScraper:
         except:
             raise Exception("Error getting folder names.")
         
-    def getFileNames(self, driver, folder):
+    def get_file_names(self, driver, folder):
         """
             Get all the file names from the sub-directory
         """
@@ -60,7 +60,7 @@ class WebScraper:
             raise Exception("Error getting file names.")
           
         
-    def downloadPdfFromIframe(self, driver, element, file):
+    def download_pdf_from_iframe(self, driver, element, file):
         """
             Download a PDF from Iframe element
         """
@@ -105,17 +105,17 @@ class WebScraper:
                 master_div = driver.find_element(By.CSS_SELECTOR, 'div.ReactVirtualized__Grid__innerScrollContainer')
 
                 if drop1arrow.get_attribute('data-automation-id') == "dmsIcon-TreeItemExpanded":
-                    folder_names = self.getFolderNames(driver)
+                    folder_names = self.get_folder_names(driver)
                     for folder_name in folder_names:
                         folder = master_div.find_element(By.ID, folder_name)
                         expand_button = folder.find_element(By.TAG_NAME, "button")
                         expand_button.click()
-                        file_names = self.getFileNames(driver, folder_name)
+                        file_names = self.get_file_names(driver, folder_name)
 
                         time.sleep(2)
 
                         for file in file_names:
-                            self.downloadPdfFromIframe(driver, element=master_div, file=file)
+                            self.download_pdf_from_iframe(driver, element=master_div, file=file)
                             time.sleep(1)
 
                         # Close subdirectory dropdown
@@ -126,12 +126,8 @@ class WebScraper:
                     # Drop root folder
                     drop1arrow.click()
                     time.sleep(2)
-
-
-
             else:
-                raise Exception("Invalid URL.")
-            
+                raise Exception("Invalid URL.")        
         except:
             raise Exception("Error pasrsing URL.")
         finally:

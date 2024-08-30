@@ -16,7 +16,7 @@ class PolicyRAG():
     def __init__(self):
         self.elastic = VectorDatabase("cloud")
 
-    def pdfToText(self, pdf:str) -> str:
+    def pdf_to_text(self, pdf:str) -> str:
         pdf = "1549228"
         text = []
         pdf_path = "./documents/" + pdf + ".pdf"
@@ -39,13 +39,13 @@ class PolicyRAG():
             batch_size = last_hidden_states.shape[0]
             return last_hidden_states[torch.arange(batch_size, device=last_hidden_states.device), sequence_lengths]
     
-    def generateEmbeddings(self, text:str) -> Tensor:
+    def generate_embeddings(self, text:str) -> Tensor:
         tokenizer = AutoTokenizer.from_pretrained("BAAI/bge-large-en-v1.5", trust_remote_code=True)
         model = AutoModel.from_pretrained("BAAI/bge-large-en-v1.5", trust_remote_code=True)
         model.eval()
 
         doc_batch_dict = tokenizer(text, max_length=512, padding=True, truncation=True, return_tensors='pt')
-        # print(doc_batch_dict.shape)
+        
         with torch.no_grad():
             doc_outputs = model(**doc_batch_dict)
             doc_embeddings = self.last_token_pool(doc_outputs.last_hidden_state, doc_batch_dict['attention_mask'])
@@ -55,26 +55,30 @@ class PolicyRAG():
         # [-0.5256, -1.1052,  0.6363,  ..., -0.0890, -0.2193, -0.4238]]) torch.Size([2, 1024])
         return doc_embeddings.squeeze().cpu().numpy(), doc_embeddings.shape
 
-    def uploadData(self):
+    def upload_data(self):
         try:
             pdf = "1549228"
             pdf_path = "./documents/" + pdf + ".pdf"
-            text = self.pdfToText("")
-            emb, shape = self.generateEmbeddings(text=text)
+            text = self.pdf_to_text("")
+            emb, shape = self.generate_embeddings(text=text)
 
             assert shape[1] == self.elastic.dims
 
             emb = emb.tolist()
             for i, e in enumerate(emb):
-                self.elastic.pushDocument(id=int(str(pdf)+str(i)), pdf_path=pdf_path, text=text, embedding=e)
+                self.elastic.push_document(id=int(str(pdf)+str(i)), pdf_path=pdf_path, text=text, embedding=e)
         except:
             raise Exception("Error uploading document.")
+        
+
+    def search_docs(self):
+        pass
 
 
 if __name__ == "__main__":
     rag = PolicyRAG()
-    # text = rag.pdfToText("")
-    # rag.generateEmbeddings(text)
-    # rag.elastic.createIndex(index_name="policy", dims=1024)
+    # text = rag.pdf_to_text("")
+    # rag.generate_embeddings(text)
+    # rag.elastic.create_index(index_name="policy", dims=1024)
     rag.uploadData()
 

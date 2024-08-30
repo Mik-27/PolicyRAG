@@ -31,7 +31,7 @@ class VectorDatabase:
         except:
             raise elasticsearch.ConnectionError("Cannot establish connection to DB.")
         
-    def createIndex(self, index_name: str, dims: int) -> None:
+    def create_index(self, index_name: str, dims: int) -> None:
         try:
             self.index = index_name
             self.dims = dims
@@ -52,7 +52,7 @@ class VectorDatabase:
             raise Exception("Error creating Index '"+index_name+"'")
         
 
-    def pushDocument(self, id:int, pdf_path: str, text: str, embedding: list) -> None:
+    def push_document(self, id:int, pdf_path: str, text: str, embedding: list) -> None:
         document = {
             'id':id,
             'pdf_path': pdf_path,
@@ -62,7 +62,8 @@ class VectorDatabase:
         res = self.es.index(index=self.index, body=document)
         pprint(res)
 
-    def getRelevantDocs(self, query_embedding: list):
+
+    def get_relevant_docs(self, query_embedding: list):
         # To be updated
         query_string = {
             "field": "title_embedding",
@@ -70,11 +71,11 @@ class VectorDatabase:
             "k": 1,
             "num_candidates": 100
         }
-
         results = self.es.search(index=self.index, knn=query_string, source_includes=["title", "genre", "release_year"])
         print(results['hits']['hits'])
 
-    def updateDoc(self, id:int):
+
+    def update_doc(self, id:int):
         # Make updates
         update_doc = {
             'doc': {
