@@ -114,7 +114,7 @@ class WebScraper:
 
                         time.sleep(2)
 
-                        for file in file_names[:2]:
+                        for file in file_names:
                             self.downloadPdfFromIframe(driver, element=master_div, file=file)
                             time.sleep(1)
 
