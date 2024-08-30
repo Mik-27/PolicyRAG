@@ -9,7 +9,8 @@ load_dotenv()
 
 class VectorDatabase:
     def __init__(self, conn: str) -> None:
-        self.index = ""
+        self.index = "policy"
+        self.dims = 1024
         try:
             if conn == 'local':
                 self.es = Elasticsearch([{'host': 'localhost', 'port': 9200}])
@@ -33,6 +34,7 @@ class VectorDatabase:
     def createIndex(self, index_name: str, dims: int) -> None:
         try:
             self.index = index_name
+            self.dims = dims
             if not self.es.indices.exists(index=index_name):
                 res = self.es.indices.create(index=index_name, body={
                     "mappings": {
@@ -45,17 +47,20 @@ class VectorDatabase:
                 })
                 print(res, "\n Index '"+index_name+"' created successfully.")
             else:
-                raise elasticsearch.ConflictError("Index '"+index_name+"' already exists.")
+                print("Index '"+index_name+"' already exists.")
         except:
             raise Exception("Error creating Index '"+index_name+"'")
+        
 
-    def pushDocument(self, pdf_path: str, text: str, embedding: list) -> None:
+    def pushDocument(self, id:int, pdf_path: str, text: str, embedding: list) -> None:
         document = {
+            'id':id,
             'pdf_path': pdf_path,
             'text': text,
             'embedding': embedding
         }
         res = self.es.index(index=self.index, body=document)
+        pprint(res)
 
     def getRelevantDocs(self, query_embedding: list):
         # To be updated
