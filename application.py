@@ -14,6 +14,10 @@ from vdb import VectorDatabase
 
 class PolicyRAG():
     def __init__(self):
+        self.tokenizer = AutoTokenizer.from_pretrained("BAAI/bge-large-en-v1.5", trust_remote_code=True)
+        self.model = AutoModel.from_pretrained("BAAI/bge-large-en-v1.5", trust_remote_code=True)
+        self.model.eval()
+
         self.elastic = VectorDatabase("cloud")
 
     def pdf_to_text(self, pdf:str) -> str:
@@ -40,14 +44,10 @@ class PolicyRAG():
             return last_hidden_states[torch.arange(batch_size, device=last_hidden_states.device), sequence_lengths]
     
     def generate_embeddings(self, text:str) -> Tensor:
-        tokenizer = AutoTokenizer.from_pretrained("BAAI/bge-large-en-v1.5", trust_remote_code=True)
-        model = AutoModel.from_pretrained("BAAI/bge-large-en-v1.5", trust_remote_code=True)
-        model.eval()
-
-        doc_batch_dict = tokenizer(text, max_length=512, padding=True, truncation=True, return_tensors='pt')
+        doc_batch_dict = self.tokenizer(text, max_length=512, padding=True, truncation=True, return_tensors='pt')
         
         with torch.no_grad():
-            doc_outputs = model(**doc_batch_dict)
+            doc_outputs = self.model(**doc_batch_dict)
             doc_embeddings = self.last_token_pool(doc_outputs.last_hidden_state, doc_batch_dict['attention_mask'])
 
         # Example Input
@@ -68,11 +68,28 @@ class PolicyRAG():
             for i, e in enumerate(emb):
                 self.elastic.push_document(id=int(str(pdf)+str(i)), pdf_path=pdf_path, text=text, embedding=e)
         except:
-            raise Exception("Error uploading document.")
+            raise Exception("Error uploading document - "+pdf)
         
 
-    def search_docs(self):
-        pass
+    def search_docs(self, by:str, query:str):
+        query_batch_dict = self.tokenizer(query, max_length=512, padding=True, truncation=True, return_tensors='pt')
+        with torch.no_grad():
+            query_outputs = self.model(**query_batch_dict)
+            query_emb = self.last_token_pool(query_outputs.last_hidden_state, query_batch_dict['attention_mask'])
+
+        query_emb = query_emb.squeeze().cpu().numpy()
+        query_emb = query_emb.tolist()
+
+        if by == "text":
+            results = self.elastic.search_by_text(query, top_k=10)
+        elif by == "embedding":
+            results = self.elastic.search_by_embedding(query_emb, top_k=10)
+        elif by == "hybrid":
+            results = self.elastic.hybrid_search(query, query_emb, top_k=10)
+        else:
+            raise AttributeError("Invalid parameter "+by+" for argument 'by'.")
+        
+        return results
 
 
 if __name__ == "__main__":
@@ -80,5 +97,6 @@ if __name__ == "__main__":
     # text = rag.pdf_to_text("")
     # rag.generate_embeddings(text)
     # rag.elastic.create_index(index_name="policy", dims=1024)
-    rag.uploadData()
+    res = rag.search_docs(by="embedding", query="Capital Management Group")
+    print(res)
 
