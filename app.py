@@ -25,9 +25,7 @@ def handle_message(data):
     emit('response', {'message': response})
 
 def generate_chatbot_response(message):
-    # A simple logic to demonstrate (replace with more advanced NLP if needed)
     if "search" in message.lower():
-        # Simulate a search or perform one based on extracted keywords
         query_embedding = rag.generate_embedding(message)
         results = rag.search_docs(by="embedding", query=query_embedding)
         return f"Found {len(results)} results for your search."
