@@ -14,16 +14,38 @@
     border: 1px solid #ccc;
     border-radius: 10px;
     padding: 10px 30px 30px;
-    /* overflow-y: scroll; */
+    overflow-y: scroll;
     margin-bottom: 10px;
     font-size: large;
+}
+
+#chat-box::-webkit-scrollbar{
+    width: 10px;
+}
+
+#chat-box::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+#chat-box::-webkit-scrollbar-thumb {
+    background-color: #a2a2a2;
+    border-radius: 10px; 
+    border: 2px solid #f1f1f1;
+}
+
+#chat-box::-webkit-scrollbar-thumb:hover {
+    background: #555;
 }
 
 #user-input {
     width: 100%;
     padding: 10px;
     border: 1px solid #ccc;
-    border-radius: 10px;
+    border-radius: 10px;  
+}
+
+input:focus {
+    outline: solid 2px var(--maroon);
 }
 
 #queryButton {
@@ -58,12 +80,12 @@
     float: left;
 }
 
-.incoming-msg>div>p {
+.incoming-msg>div {
     background: var(--yellow) none repeat scroll 0 0;
     border-radius: 10px;
     color: black;
     font-size: 18px;
     margin: 0;
-    padding: 5px 10px 5px 12px;
+    padding: 20px 15px 10px 20px;
     width: 100%;
 }
