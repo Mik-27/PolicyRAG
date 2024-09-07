@@ -75,7 +75,7 @@ class VectorDatabase:
 
         response = self.es.search(index=self.index, body=search_query)
         hits = response['hits']['hits']
-        results = [{"pdf_path": hit["_source"]["pdf_path"], "text": hit["_source"]["text"]} for hit in hits]
+        results = [{"id":hit["_source"]["id"], "pdf_path": hit["_source"]["pdf_path"], "text": hit["_source"]["text"], "score": hit["_score"]} for hit in hits]
 
         return results
 
@@ -108,7 +108,7 @@ class VectorDatabase:
         # print(results)
         return results
     
-    
+    # Not working
     def hybrid_search(self, query, query_embedding, top_k=5):
         search_query = {
             "size": top_k,
@@ -136,11 +136,7 @@ class VectorDatabase:
         
         response = self.es.search(index=self.index, body=search_query)
         hits = response['hits']['hits']
-        results = [{
-            "pdf_path": hit["_source"]["pdf_path"],
-            "text": hit["_source"]["text"],
-            "score": hit["_score"]
-        } for hit in hits]
+        results = [{"id":hit["_source"]["id"], "pdf_path": hit["_source"]["pdf_path"], "text": hit["_source"]["text"], "score": hit["_score"]} for hit in hits]
         
         return results
 

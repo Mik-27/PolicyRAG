@@ -2,14 +2,19 @@ from web_scraper import WebScraper
 from transformers import AutoTokenizer, AutoModel
 from torch import Tensor
 from elasticsearch import Elasticsearch
+from dotenv import load_dotenv
+import google.generativeai as genai
 
 import torch
 import torch.nn.functional as F
 import PyPDF2
 import os
+import ollama
 
 from utils.utils import verifyPdf
 from vdb import VectorDatabase
+
+load_dotenv()
 
 
 class PolicyRAG():
@@ -19,6 +24,19 @@ class PolicyRAG():
         self.model.eval()
 
         self.elastic = VectorDatabase("cloud")
+
+        # model_id = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+
+        # self.gen_pipeline = pipeline(
+        #     "text-generation",
+        #     model=model_id,
+        #     model_kwargs={"torch_dtype": torch.bfloat16},
+        #     device_map="auto",
+        #     token=os.environ["HF_ACCESS_TOKEN"]
+        # )
+
+        # genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+        
 
     def pdf_to_text(self, pdf:str) -> str:
         pdf = "1549228"
@@ -90,13 +108,29 @@ class PolicyRAG():
             raise AttributeError("Invalid parameter "+by+" for argument 'by'.")
         
         return results
+    
+    def generate_query_output(self, query:str, context:str):
+        print(type(query), type(context))
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "Answer the following question on ASU Policies:" 
+            + query 
+            + "by using the following text:" 
+            + context},
+        ]
+
+        outputs = ollama.chat(model='gemma2:2b', messages=messages)
+
+        print(outputs['message']['content'])
+        return outputs['message']['content']
 
 
 if __name__ == "__main__":
     rag = PolicyRAG()
     # text = rag.pdf_to_text("")
+    # print(text)
     # rag.generate_embeddings(text)
     # rag.elastic.create_index(index_name="policy", dims=1024)
-    res = rag.search_docs(by="embedding", query="Capital Management Group")
-    print(res)
+    # res = rag.search_docs(by="text", query="Capital Management Group")
+    # print(res)
 
