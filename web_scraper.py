@@ -14,19 +14,19 @@ class WebScraper:
         self.url = url
 
 
-    # def checkURL(self):
-    #     """
-    #         Check whether provided URL is valid or not.
-    #     """
-    #     try:
-    #         response = requests.get(self.url)
-    #         if response.status_code == 200:
-    #             return 1
-    #         else:
-    #             response.raise_for_status()
-    #             return 0
-    #     except requests.exceptions.RequestException as e:
-    #         raise SystemExit(e)
+    def checkURL(self):
+        """
+            Check whether provided URL is valid or not.
+        """
+        try:
+            response = requests.get(self.url)
+            if response.status_code == 200:
+                return 1
+            else:
+                response.raise_for_status()
+                return 0
+        except requests.exceptions.RequestException as e:
+            raise SystemExit(e)
         
         
     def get_folder_names(self, driver):
@@ -91,7 +91,7 @@ class WebScraper:
                 service = Service(executable_path='./chromedriver/chromedriver.exe')
                 options = webdriver.ChromeOptions()
                 prefs = {"profile.default_content_settings.popups": 0,
-                    "download.default_directory": r"C:\Mihir\Projects\RAG\documents\\",
+                    "download.default_directory": r"C:\Mihir\Projects\PolicyRAG\documents\\",
                     "directory_upgrade": True}
                 options.add_experimental_option("prefs",prefs)
                 driver = webdriver.Chrome(service=service, options=options)
