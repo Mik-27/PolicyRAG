@@ -20,24 +20,17 @@ def handle_message(data):
     # Process the user message
     response = generate_chatbot_response(user_message)
     print(response)
-    # response = "Test"
     
     # Send the response back to the user
     emit('response', {'message': response})
 
 def generate_chatbot_response(message):
-    # if "search" in message.lower():
-    # query_embedding, shape = rag.generate_embeddings(message)
-    # print(query_embedding)
     docs = rag.search_docs(by="embedding", query=message)
-    # print(results[0]['text'])
     text = [x[2:] for x in docs[0]['text']]
     text = ''.join(text)
     res = rag.generate_query_output(query=message, context=text)
-    # print(res)
+    
     return res
-    # else:
-    #     return "I'm here to help! You can ask me to search for PDFs."
 
 if __name__ == '__main__':
     socketio.run(app, debug=True)

@@ -3,12 +3,11 @@ from transformers import AutoTokenizer, AutoModel
 from torch import Tensor
 from elasticsearch import Elasticsearch
 from dotenv import load_dotenv
-import google.generativeai as genai
+# import google.generativeai as genai
 
 import torch
 import torch.nn.functional as F
 import PyPDF2
-import os
 import ollama
 
 from utils.utils import verifyPdf
@@ -121,7 +120,7 @@ class PolicyRAG():
 
         outputs = ollama.chat(model='gemma2:2b', messages=messages)
 
-        print(outputs['message']['content'])
+        # print(outputs['message']['content'])
         return outputs['message']['content']
 
 
