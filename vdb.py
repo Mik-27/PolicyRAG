@@ -1,9 +1,9 @@
-from elasticsearch import Elasticsearch
+# from elasticsearch import Elasticsearch
 from dotenv import load_dotenv
 from pprint import pprint
 
 import os
-import elasticsearch
+from elasticsearch import Elasticsearch, ConnectionError
 import numpy as np
 
 load_dotenv()
@@ -14,7 +14,10 @@ class VectorDatabase:
         self.dims = 1024
         try:
             if conn == 'local':
-                self.es = Elasticsearch([{'host': 'localhost', 'port': 9200}])
+                self.es = Elasticsearch("https://localhost:9200",
+                    basic_auth=("elastic", os.environ['ELASTIC_PASSWORD']),
+                    verify_certs=False,
+                    request_timeout=30)
                 if self.es.ping():
                     print("Connected to Elasticsearch")
                     pprint(self.es.info())
@@ -28,10 +31,11 @@ class VectorDatabase:
                 else:
                     print("Connection failed")
             else:
-                raise AttributeError(conn, "argument invalid.")
+                raise AttributeError(conn, "Argument invalid.")
         except:
-            raise elasticsearch.ConnectionError("Cannot establish connection to DB.")
-        
+            raise ConnectionError("Could not establish connection to Elastic DB.")
+
+       
     def create_index(self, index_name: str, dims: int) -> None:
         try:
             self.index = index_name
@@ -101,11 +105,9 @@ class VectorDatabase:
         }
 
         response = self.es.search(index=self.index, body=search_query)
-        # print(response)
         hits = response['hits']['hits']
-        # print(hits)
         results = [{"id":hit["_source"]["id"], "pdf_path": hit["_source"]["pdf_path"], "text": hit["_source"]["text"], "score": hit["_score"]} for hit in hits]
-        # print(results)
+        
         return results
     
     # Not working
@@ -170,4 +172,9 @@ class VectorDatabase:
 
 
 if __name__ == "__main__":
-    elastic = VectorDatabase(conn="cloud")
+    elastic = VectorDatabase(conn="local")
+    # es = Elasticsearch("https://localhost:9200",
+    #         basic_auth=("elastic", os.environ['ELASTIC_PASSWORD']),
+    #         verify_certs=False,
+    #         request_timeout=90)
+    # print(es.ping())
