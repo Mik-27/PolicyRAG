@@ -22,14 +22,14 @@ class VectorDatabase:
                     print("Connected to Elasticsearch")
                     pprint(self.es.info())
                 else:
-                    print("Connection failed")
+                    raise ConnectionError("Could not establish connection to Elastic DB.")
             elif conn == 'cloud':
                 self.es = Elasticsearch(cloud_id=os.environ['ELASTIC_CLOUD_ID'], api_key=os.environ['ELASTIC_API_KEY'])
                 if self.es.ping():
                     print("Connected to Elasticsearch")
                     pprint(self.es.info())
                 else:
-                    print("Connection failed")
+                    raise ConnectionError("Could not establish connection to Elastic DB.")
             elif conn == 'deployment':
                 self.es = Elasticsearch(
                     "http://elasticsearch:9200",
@@ -40,7 +40,7 @@ class VectorDatabase:
                     print("Connected to Elasticsearch")
                     pprint(self.es.info())
                 else:
-                    print("Connection failed")
+                    raise ConnectionError("Could not establish connection to Elastic DB.")
             else:
                 raise AttributeError(conn, "Argument invalid.")
         except:
@@ -69,6 +69,16 @@ class VectorDatabase:
         
 
     def push_document(self, id:int, pdf_path: str, text: str, embedding: list) -> None:
+        if embedding is None or not isinstance(embedding, list):
+            raise ValueError(f"Embedding must be a list, got {type(embedding)}")
+        
+        if len(embedding) != self.dims:
+            raise ValueError(f"Embedding length ({len(embedding)}) doesn't match expected dimensions ({self.dims})")
+
+        for i, value in enumerate(embedding):
+            if not isinstance(value, (int, float)):
+                raise ValueError(f"Non-numeric value found at position {i}: {value}")
+        
         document = {
             'id':id,
             'pdf_path': pdf_path,
@@ -174,6 +184,24 @@ class VectorDatabase:
             }
         }
         self.es.update(index=self.index, id=id, body=update_doc)
+        
+    def count_documents(self):
+        """Count documents in the index"""
+        try:
+            result = self.es.count(index=self.index)
+            count = result["count"]
+            print(f"Document count in {self.index}: {count}")
+            return count
+        except Exception as e:
+            print(f"Error counting documents: {e}")
+            return -1
+        
+    def delete_all(self):
+        """
+            Delete all documents in the index
+        """
+        self.es.delete_by_query(index=self.index, body={"query": {"match_all": {}}}, refresh=True)
+        print("All documents deleted from index.")
 
     def close(self):
         """
@@ -184,6 +212,7 @@ class VectorDatabase:
 
 if __name__ == "__main__":
     elastic = VectorDatabase(conn="local")
+    elastic.count_documents()
     # es = Elasticsearch("https://localhost:9200",
     #         basic_auth=("elastic", os.environ['ELASTIC_PASSWORD']),
     #         verify_certs=False,
