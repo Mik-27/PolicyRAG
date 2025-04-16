@@ -1,4 +1,3 @@
-# from elasticsearch import Elasticsearch
 from dotenv import load_dotenv
 from pprint import pprint
 
@@ -7,6 +6,7 @@ from elasticsearch import Elasticsearch, ConnectionError
 import numpy as np
 
 load_dotenv()
+
 
 class VectorDatabase:
     def __init__(self, conn: str) -> None:
@@ -25,6 +25,17 @@ class VectorDatabase:
                     print("Connection failed")
             elif conn == 'cloud':
                 self.es = Elasticsearch(cloud_id=os.environ['ELASTIC_CLOUD_ID'], api_key=os.environ['ELASTIC_API_KEY'])
+                if self.es.ping():
+                    print("Connected to Elasticsearch")
+                    pprint(self.es.info())
+                else:
+                    print("Connection failed")
+            elif conn == 'deployment':
+                self.es = Elasticsearch(
+                    "http://elasticsearch:9200",
+                    verify_certs=False,
+                    request_timeout=30
+                )
                 if self.es.ping():
                     print("Connected to Elasticsearch")
                     pprint(self.es.info())

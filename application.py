@@ -1,9 +1,9 @@
+import os
 from web_scraper import WebScraper
 from transformers import AutoTokenizer, AutoModel
 from torch import Tensor
 from elasticsearch import Elasticsearch
 from dotenv import load_dotenv
-# import google.generativeai as genai
 
 import torch
 import torch.nn.functional as F
@@ -21,20 +21,8 @@ class PolicyRAG():
         self.tokenizer = AutoTokenizer.from_pretrained("BAAI/bge-large-en-v1.5", trust_remote_code=True)
         self.model = AutoModel.from_pretrained("BAAI/bge-large-en-v1.5", trust_remote_code=True)
         self.model.eval()
-
-        self.elastic = VectorDatabase("cloud")
-
-        # model_id = "meta-llama/Meta-Llama-3.1-8B-Instruct"
-
-        # self.gen_pipeline = pipeline(
-        #     "text-generation",
-        #     model=model_id,
-        #     model_kwargs={"torch_dtype": torch.bfloat16},
-        #     device_map="auto",
-        #     token=os.environ["HF_ACCESS_TOKEN"]
-        # )
-
-        # genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+        self.elastic = VectorDatabase("local")
+        ollama.host = os.environ.get("OLLAMA_HOST")
         
 
     def pdf_to_text(self, pdf:str) -> str:
@@ -120,16 +108,30 @@ class PolicyRAG():
 
         outputs = ollama.chat(model='gemma2:2b', messages=messages)
 
-        # print(outputs['message']['content'])
         return outputs['message']['content']
 
 
+def test_ollama_connection():
+    try:
+        ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+        import ollama
+        ollama.host = ollama_host
+        
+        # List available models to test connection
+        models = ollama.list()
+        print(f"Connected to Ollama. Available models: {models}")
+        return True
+    except Exception as e:
+        print(f"Failed to connect to Ollama: {e}")
+        return False
+
+
 if __name__ == "__main__":
-    rag = PolicyRAG()
+    # rag = PolicyRAG()
     # text = rag.pdf_to_text("")
     # print(text)
     # rag.generate_embeddings(text)
     # rag.elastic.create_index(index_name="policy", dims=1024)
     # res = rag.search_docs(by="text", query="Capital Management Group")
     # print(res)
-
+    test_ollama_connection()
