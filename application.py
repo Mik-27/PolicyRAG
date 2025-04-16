@@ -10,7 +10,7 @@ import torch.nn.functional as F
 import PyPDF2
 import ollama
 
-from utils.utils import verifyPdf
+from utils.utils import trim_file_name, verifyPdf
 from vdb import VectorDatabase
 
 load_dotenv()
@@ -26,9 +26,9 @@ class PolicyRAG():
         
 
     def pdf_to_text(self, pdf:str) -> str:
-        pdf = "1549228"
+        # pdf = "1549228"
         text = []
-        pdf_path = "./documents/" + pdf + ".pdf"
+        pdf_path = "./documents/" + pdf
         if verifyPdf:
             with open(pdf_path, 'rb') as file:
                 reader = PyPDF2.PdfReader(file)
@@ -60,20 +60,55 @@ class PolicyRAG():
         # [-0.5256, -1.1052,  0.6363,  ..., -0.0890, -0.2193, -0.4238]]) torch.Size([2, 1024])
         return doc_embeddings.squeeze().cpu().numpy(), doc_embeddings.shape
 
-    def upload_data(self):
+    def upload_doc(self, doc:str):
+        """
+            Upload document to ElasticSearch
+        """
         try:
-            pdf = "1549228"
-            pdf_path = "./documents/" + pdf + ".pdf"
-            text = self.pdf_to_text("")
+            # pdf = "1549228"
+            pdf_path = "./documents/" + doc
+            text = self.pdf_to_text(doc)
             emb, shape = self.generate_embeddings(text=text)
 
             assert shape[1] == self.elastic.dims
 
             emb = emb.tolist()
             for i, e in enumerate(emb):
-                self.elastic.push_document(id=int(str(pdf)+str(i)), pdf_path=pdf_path, text=text, embedding=e)
+                self.elastic.push_document(id=int(str(doc)+str(i)), pdf_path=pdf_path, text=text, embedding=e)
         except:
-            raise Exception("Error uploading document - "+pdf)
+            raise Exception("Error uploading document - "+doc+".pdf")
+        
+    def upload_docs(self, path:str):
+        """
+            Upload document to ElasticSearch
+        """
+        # TODO: Error handling for each documents
+        try:
+            pdf_files = [f for f in os.listdir(path) if f.endswith('.pdf')]
+            # print("PDF Files:", pdf_files)
+            for pdf in pdf_files:
+                pdf_path = "./documents/" + pdf
+                text = self.pdf_to_text(pdf)
+                emb, shape = self.generate_embeddings(text=text)
+
+                assert shape[1] == self.elastic.dims
+
+                emb = emb.tolist()
+                if shape[0] == 1:
+                    emb = [emb]
+                # print(shape)
+
+                for i, e in enumerate(emb):
+                    pdf = trim_file_name(pdf)
+                    if not pdf:
+                        raise Exception("Error trimming file name")
+                    try:
+                        self.elastic.push_document(id=int(str(pdf)+str(i)), pdf_path=pdf_path, text=text[i], embedding=e)
+                        print("Uploaded - " + pdf + ".pdf")
+                    except:
+                        raise Exception("Error uploading document - "+pdf+".pdf")
+        except:
+            raise Exception("Error uploading documents")
         
 
     def search_docs(self, by:str, query:str):
@@ -122,16 +157,14 @@ def test_ollama_connection():
         print(f"Connected to Ollama. Available models: {models}")
         return True
     except Exception as e:
-        print(f"Failed to connect to Ollama: {e}")
+        print(f"{e}")
         return False
 
 
 if __name__ == "__main__":
-    # rag = PolicyRAG()
-    # text = rag.pdf_to_text("")
-    # print(text)
-    # rag.generate_embeddings(text)
+    rag = PolicyRAG()
     # rag.elastic.create_index(index_name="policy", dims=1024)
+    rag.upload_docs(path="./documents/")
     # res = rag.search_docs(by="text", query="Capital Management Group")
     # print(res)
-    test_ollama_connection()
+    # test_ollama_connection()

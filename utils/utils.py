@@ -23,3 +23,16 @@ def verifyPdf(pdf):
             raise FileNotFoundError("File does not exist.")
     except:
         raise FileNotFoundError("File does not exist.")
+    
+def trim_file_name(file_name):
+    """
+        Trim the file name to remove unwanted characters.
+    """
+    # Remove unwanted characters from the file name
+    trimmed_file_name = file_name.split(".pdf")[0]
+    
+    # Ensure the file name is not empty
+    if not trimmed_file_name:
+        raise ValueError("File name cannot be empty after trimming.")
+    
+    return trimmed_file_name
