@@ -157,36 +157,49 @@ class VectorDatabase:
         return results
     
     # Not working
-    # def hybrid_search(self, query, query_embedding, top_k=5):
-    #     search_query = {
-    #         "size": top_k,
-    #         "query": {
-    #             "bool": {
-    #                 "should": [
-    #                     {
-    #                         "match": {
-    #                             "text": query
-    #                         }
-    #                     },
-    #                     {
-    #                         "knn": {
-    #                             "embedding": {
-    #                                 "vector": query_embedding,
-    #                                 "k": top_k
-    #                             }
-    #                         }
-    #                     }
-    #                 ],
-    #                 "minimum_should_match": 1
-    #             }
-    #         }
-    #     }
+    def hybrid_search(self, query, query_embedding, top_k=5):
+        search_query = {
+            "size": 10,
+            "query": {
+                "script_score": {
+                "query": {
+                    "bool": {
+                    "should": [
+                        {
+                            "match": {
+                                "text": {
+                                "query": query,
+                                "boost": 1
+                                }
+                            }
+                        },
+                        {
+                            "match_phrase": {
+                                "text": {
+                                "query": query,
+                                "boost": 1.5
+                                }
+                            }
+                        }
+                    ]
+                    }
+                },
+                    "script": {
+                        "source": "cosineSimilarity(params.query_vector, 'embedding') + 1.0",
+                        "params": {
+                        "query_vector": query_embedding 
+                        }
+                    }
+                }
+            }
+        }
+
         
-    #     response = self.es.search(index=self.index, body=search_query)
-    #     hits = response['hits']['hits']
-    #     results = [{"id":hit["_source"]["id"], "pdf_path": hit["_source"]["pdf_path"], "text": hit["_source"]["text"], "score": hit["_score"]} for hit in hits]
+        response = self.es.search(index=self.index, body=search_query)
+        hits = response['hits']['hits']
+        results = [{"id":hit["_source"]["id"], "pdf_path": hit["_source"]["pdf_path"], "text": hit["_source"]["text"], "score": hit["_score"]} for hit in hits]
         
-    #     return results
+        return results
 
 
     # def get_relevant_docs(self, query_embedding: list):
@@ -243,7 +256,7 @@ class VectorDatabase:
 
 if __name__ == "__main__":
     elastic = VectorDatabase(conn="local")
-    elastic.delete_all()
+    # elastic.delete_all()
     # es = Elasticsearch("https://localhost:9200",
     #         basic_auth=("elastic", os.environ['ELASTIC_PASSWORD']),
     #         verify_certs=False,
