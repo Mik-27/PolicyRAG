@@ -176,11 +176,11 @@ class PolicyRAG():
         query_emb = query_emb.tolist()
 
         if by == "text":
-            results = self.elastic.search_by_text(query, top_k=5)
+            results = self.elastic.search_by_text(query, top_k=10)
         elif by == "embedding":
-            results = self.elastic.search_by_embedding(query_emb, top_k=5)
+            results = self.elastic.search_by_embedding(query_emb, top_k=10)
         elif by == "hybrid":
-            results = self.elastic.hybrid_search(query, query_emb, top_k=5)
+            results = self.elastic.hybrid_search(query, query_emb, top_k=10)
         else:
             raise AttributeError("Invalid parameter "+by+" for argument 'by'.")
         

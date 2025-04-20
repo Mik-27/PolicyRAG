@@ -30,19 +30,19 @@ def handle_message(data):
 
 def generate_chatbot_response(message):
     docs = rag.search_docs(by="embedding", query=message)
-    relevant_docs = [doc for doc in docs if doc['score'] > 0.7]
-    print("Relevant documents:", len(relevant_docs))
+    # print([doc['score'] for doc in docs])
     
-    text = docs[0]['text']
-    res = rag.generate_query_output(query=message, context=text)
-    if relevant_docs:
-        combined_text = ""
-        for i, doc in enumerate(relevant_docs):
-            combined_text += f"\n--- Document {i+1} ---\n{doc['text']}\n"
+    # Use cummulative document scores to pass relevant documents to LLM chatbot
+    cum_prob = 0.0
+    combined_text = ""
+    for i, doc in enumerate(docs):
+        combined_text += f"\n--- Document ---\n{doc['text']}\n"
+        cum_prob += doc['score']
+        if cum_prob > 4.50:
+            print("Relevant documents:", i+1)
+            break
             
-        res = rag.generate_query_output(query=message, context=combined_text)
-    else:
-        res = "I couldn't find any relevant information about that topic in the policies."
+    res = rag.generate_query_output(query=message, context=combined_text)
     
     return res
 
