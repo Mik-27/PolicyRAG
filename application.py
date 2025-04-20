@@ -1,4 +1,5 @@
 import os
+import re
 from web_scraper import WebScraper
 from transformers import AutoTokenizer, AutoModel
 from torch import Tensor
@@ -9,11 +10,16 @@ import torch
 import torch.nn.functional as F
 import PyPDF2
 import ollama
+import nltk
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
 
 from utils.utils import trim_file_name, verifyPdf
 from vdb import VectorDatabase
 
 load_dotenv()
+nltk.download('stopwords')
+nltk.download('wordnet')
 
 
 class PolicyRAG():
@@ -23,6 +29,8 @@ class PolicyRAG():
         self.model.eval()
         self.elastic = VectorDatabase("local")
         ollama.host = os.environ.get("OLLAMA_HOST")
+        self.total_token_length = 0
+        self.record_count = 0
         
 
     def pdf_to_text(self, pdf:str) -> str:
@@ -35,9 +43,41 @@ class PolicyRAG():
                 for page in reader.pages:
                     page_text = page.extract_text()
                     text.append(page_text)
+            # print("PDF Text:", text, len(text))
             return text
         else:
             return -1
+        
+    def preprocess_text(self, text:str) -> str:
+        preprocessed_text = []
+        for i, t in enumerate(text):
+            t = re.sub(r'\n*\d+\n*$', '', t, flags=re.MULTILINE)
+            t = re.sub(r'==Start of OCR.*?==End of OCR==', '', t, flags=re.DOTALL)
+
+            # 4. Remove Effective and Revision Dates lines:
+            t = re.sub(r'Effective:.*?\n', '', t)
+            t = re.sub(r'Revised:.*?\n', '', t)
+
+            # 5. Remove specific noise patterns from the OCR
+            t = re.sub(r'ASU Arizers St\n', '', t)
+
+            # 6. General Text Cleaning (same as before)
+            t = re.sub(r"[^a-zA-Z0-9\s\"\'\-\+\=\*\:\;\/\?\(\)\{\}\[\]\!\&\,\.]", '', t) # Remove non-alphanumeric
+            t = re.sub(r"\s+", ' ', t).strip()  # Remove extra whitespace
+            t = t.lower() # Lowercase
+
+            # 7. Remove Stopwords
+            stop_words = set(stopwords.words('english'))
+            words = t.split()
+            words = [word for word in words if word not in stop_words]
+
+            # 8. Lemmatize
+            lemmatizer = WordNetLemmatizer()
+            words = [lemmatizer.lemmatize(word) for word in words]
+            preprocessed_text.append(" ".join(words)[2:])
+
+        return preprocessed_text
+        
         
     def last_token_pool(self, last_hidden_states: Tensor, attention_mask: Tensor) -> Tensor:
         left_padding = (attention_mask[:, -1].sum() == attention_mask.shape[0])
@@ -50,6 +90,16 @@ class PolicyRAG():
     
     def generate_embeddings(self, text:str) -> Tensor:
         doc_batch_dict = self.tokenizer(text, max_length=512, padding=True, truncation=True, return_tensors='pt')
+        
+        # Metadata for token counts
+        attention_mask = doc_batch_dict['attention_mask']
+        token_counts = attention_mask.sum(dim=1).tolist()
+        total_tokens = attention_mask.sum().item()
+        self.record_count += len(token_counts)
+        self.total_token_length += total_tokens
+        
+        # print(f"Token counts per sequence: {token_counts}")
+        # print(f"Total tokens: {total_tokens}")
         
         with torch.no_grad():
             doc_outputs = self.model(**doc_batch_dict)
@@ -89,7 +139,8 @@ class PolicyRAG():
             for pdf in pdf_files:
                 pdf_path = "./documents/" + pdf
                 text = self.pdf_to_text(pdf)
-                emb, shape = self.generate_embeddings(text=text)
+                preprocessed_text = self.preprocess_text(text)
+                emb, shape = self.generate_embeddings(text=preprocessed_text)
 
                 assert shape[1] == self.elastic.dims
 
@@ -103,12 +154,16 @@ class PolicyRAG():
                     if not pdf:
                         raise Exception("Error trimming file name")
                     try:
-                        self.elastic.push_document(id=int(str(pdf)+str(i)), pdf_path=pdf_path, text=text[i], embedding=e)
+                        self.elastic.push_document(id=int(str(pdf)+str(i)), pdf_path=pdf_path, text=preprocessed_text[i], embedding=e)
                         print("Uploaded - " + pdf + ".pdf")
                     except:
                         raise Exception("Error uploading document - "+pdf+".pdf")
         except:
             raise Exception("Error uploading documents")
+        finally:
+            print("Total records:", self.record_count)
+            print("Total tokens:", self.total_token_length)
+            print("Average tokens per record:", self.total_token_length/self.record_count)
         
 
     def search_docs(self, by:str, query:str):
@@ -121,23 +176,23 @@ class PolicyRAG():
         query_emb = query_emb.tolist()
 
         if by == "text":
-            results = self.elastic.search_by_text(query, top_k=10)
+            results = self.elastic.search_by_text(query, top_k=5)
         elif by == "embedding":
-            results = self.elastic.search_by_embedding(query_emb, top_k=10)
+            results = self.elastic.search_by_embedding(query_emb, top_k=5)
         elif by == "hybrid":
-            results = self.elastic.hybrid_search(query, query_emb, top_k=10)
+            results = self.elastic.hybrid_search(query, query_emb, top_k=5)
         else:
             raise AttributeError("Invalid parameter "+by+" for argument 'by'.")
         
         return results
     
     def generate_query_output(self, query:str, context:str):
-        print(type(query), type(context))
+        # print(type(query), type(context))
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": "Answer the following question on ASU Policies:" 
-            + query 
-            + "by using the following text:" 
+            + query
+            + "by using the following text:"
             + context},
         ]
 
@@ -163,7 +218,10 @@ def test_ollama_connection():
 
 if __name__ == "__main__":
     rag = PolicyRAG()
-    # rag.elastic.create_index(index_name="policy", dims=1024)
+    # text = rag.pdf_to_text("1540244.pdf")
+    # preprocessed_text = rag.preprocess_text(text)
+    # print("Preprocessed Text:", preprocessed_text)
+    rag.elastic.create_index(index_name="policy", dims=1024)
     rag.upload_docs(path="./documents/")
     # res = rag.search_docs(by="text", query="Capital Management Group")
     # print(res)

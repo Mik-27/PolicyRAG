@@ -212,7 +212,7 @@ class VectorDatabase:
 
 if __name__ == "__main__":
     elastic = VectorDatabase(conn="local")
-    elastic.count_documents()
+    elastic.delete_all()
     # es = Elasticsearch("https://localhost:9200",
     #         basic_auth=("elastic", os.environ['ELASTIC_PASSWORD']),
     #         verify_certs=False,
