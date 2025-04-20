@@ -86,6 +86,12 @@ class WebScraper:
         
 
     def getDocuemnts(self):
+        """
+            Get all the documents from the provided URL.
+            URL: URL to scrape documents from
+            
+            Stores the documents in './documents/'.
+        """
         try:
             if checkUrlHealth(self.url):
                 service = Service(executable_path='./chromedriver/chromedriver.exe')

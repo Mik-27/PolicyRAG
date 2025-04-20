@@ -13,6 +13,7 @@ class VectorDatabase:
         self.index = "policy"
         self.dims = 1024
         try:
+            # Connect and create an instance of the Elasticsearch client
             if conn == 'local':
                 self.es = Elasticsearch("https://localhost:9200",
                     basic_auth=("elastic", os.environ['ELASTIC_PASSWORD']),
@@ -48,6 +49,11 @@ class VectorDatabase:
 
        
     def create_index(self, index_name: str, dims: int) -> None:
+        """
+            Create an index in the elasticsearch server
+            index_name: Name of the index to be created
+            dims: Dimensions of the embedding vector
+        """
         try:
             self.index = index_name
             self.dims = dims
@@ -69,6 +75,13 @@ class VectorDatabase:
         
 
     def push_document(self, id:int, pdf_path: str, text: str, embedding: list) -> None:
+        """
+            Push document to the index
+            id: Document ID
+            pdf_path: Path to the PDF file
+            text: Text content of the document
+            embedding: Embedding vector of the document
+        """
         if embedding is None or not isinstance(embedding, list):
             raise ValueError(f"Embedding must be a list, got {type(embedding)}")
         
@@ -86,10 +99,17 @@ class VectorDatabase:
             'embedding': embedding
         }
         res = self.es.index(index=self.index, body=document)
-        pprint(res)
+        # pprint(res)
 
 
     def search_by_text(self, query_text, top_k=5):
+        """
+            Search for documents using a query text
+            query_text: Query text to search for
+            top_k: Number of top results to return
+            
+            return: List of top_k documents with their scores    
+        """
         search_query = {
             "query": {
                 "match": {
@@ -106,7 +126,12 @@ class VectorDatabase:
 
 
     def search_by_embedding(self, query_embedding, top_k=5):
-        # query_embedding = np.array(query_embedding).reshape(1, -1)
+        """
+            Search for documents using a query embedding
+            query_embedding: Query embedding to search for
+            top_k: Number of top results to return
+            return: List of top_k documents with their scores    
+        """
         print(len(query_embedding))
         search_query = {
             "size": top_k,
@@ -132,36 +157,36 @@ class VectorDatabase:
         return results
     
     # Not working
-    def hybrid_search(self, query, query_embedding, top_k=5):
-        search_query = {
-            "size": top_k,
-            "query": {
-                "bool": {
-                    "should": [
-                        {
-                            "match": {
-                                "text": query
-                            }
-                        },
-                        {
-                            "knn": {
-                                "embedding": {
-                                    "vector": query_embedding,
-                                    "k": top_k
-                                }
-                            }
-                        }
-                    ],
-                    "minimum_should_match": 1
-                }
-            }
-        }
+    # def hybrid_search(self, query, query_embedding, top_k=5):
+    #     search_query = {
+    #         "size": top_k,
+    #         "query": {
+    #             "bool": {
+    #                 "should": [
+    #                     {
+    #                         "match": {
+    #                             "text": query
+    #                         }
+    #                     },
+    #                     {
+    #                         "knn": {
+    #                             "embedding": {
+    #                                 "vector": query_embedding,
+    #                                 "k": top_k
+    #                             }
+    #                         }
+    #                     }
+    #                 ],
+    #                 "minimum_should_match": 1
+    #             }
+    #         }
+    #     }
         
-        response = self.es.search(index=self.index, body=search_query)
-        hits = response['hits']['hits']
-        results = [{"id":hit["_source"]["id"], "pdf_path": hit["_source"]["pdf_path"], "text": hit["_source"]["text"], "score": hit["_score"]} for hit in hits]
+    #     response = self.es.search(index=self.index, body=search_query)
+    #     hits = response['hits']['hits']
+    #     results = [{"id":hit["_source"]["id"], "pdf_path": hit["_source"]["pdf_path"], "text": hit["_source"]["text"], "score": hit["_score"]} for hit in hits]
         
-        return results
+    #     return results
 
 
     # def get_relevant_docs(self, query_embedding: list):
@@ -177,7 +202,11 @@ class VectorDatabase:
 
 
     def update_doc(self, id:int):
-        # Make updates
+        """
+            Update document in the index
+            id: Document ID to update
+            return: None
+        """
         update_doc = {
             'doc': {
                 'content': 'Updated content for this document.'
@@ -186,7 +215,9 @@ class VectorDatabase:
         self.es.update(index=self.index, id=id, body=update_doc)
         
     def count_documents(self):
-        """Count documents in the index"""
+        """
+            Count documents in the index
+        """
         try:
             result = self.es.count(index=self.index)
             count = result["count"]

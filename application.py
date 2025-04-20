@@ -34,7 +34,12 @@ class PolicyRAG():
         
 
     def pdf_to_text(self, pdf:str) -> str:
-        # pdf = "1549228"
+        """
+            Convert PDF to text using PyPDF2
+            pdf: pdf file name to convert
+            
+            returns: text extracted from the pdf
+        """
         text = []
         pdf_path = "./documents/" + pdf
         if verifyPdf:
@@ -43,35 +48,37 @@ class PolicyRAG():
                 for page in reader.pages:
                     page_text = page.extract_text()
                     text.append(page_text)
-            # print("PDF Text:", text, len(text))
             return text
         else:
             return -1
         
     def preprocess_text(self, text:str) -> str:
+        """
+            Preprocess the text by removing unwanted characters, stopwords, and lemmatizing the words
+            text: text to preprocess
+            
+            returns: preprocessed text
+        """
         preprocessed_text = []
         for i, t in enumerate(text):
             t = re.sub(r'\n*\d+\n*$', '', t, flags=re.MULTILINE)
-            t = re.sub(r'==Start of OCR.*?==End of OCR==', '', t, flags=re.DOTALL)
+            # t = re.sub(r'==Start of OCR.*?==End of OCR==', '', t, flags=re.DOTALL)
 
-            # 4. Remove Effective and Revision Dates lines:
+            # Remove Effective and Revision Dates lines:
             t = re.sub(r'Effective:.*?\n', '', t)
             t = re.sub(r'Revised:.*?\n', '', t)
 
-            # 5. Remove specific noise patterns from the OCR
-            t = re.sub(r'ASU Arizers St\n', '', t)
+            # General Text Cleaning
+            t = re.sub(r"[^a-zA-Z0-9\s\"\'\-\+\=\*\:\;\/\?\(\)\{\}\[\]\!\&\,\.]", '', t)
+            t = re.sub(r"\s+", ' ', t).strip()
+            t = t.lower()
 
-            # 6. General Text Cleaning (same as before)
-            t = re.sub(r"[^a-zA-Z0-9\s\"\'\-\+\=\*\:\;\/\?\(\)\{\}\[\]\!\&\,\.]", '', t) # Remove non-alphanumeric
-            t = re.sub(r"\s+", ' ', t).strip()  # Remove extra whitespace
-            t = t.lower() # Lowercase
-
-            # 7. Remove Stopwords
+            # Remove Stopwords
             stop_words = set(stopwords.words('english'))
             words = t.split()
             words = [word for word in words if word not in stop_words]
 
-            # 8. Lemmatize
+            # Lemmatize
             lemmatizer = WordNetLemmatizer()
             words = [lemmatizer.lemmatize(word) for word in words]
             preprocessed_text.append(" ".join(words)[2:])
@@ -80,6 +87,13 @@ class PolicyRAG():
         
         
     def last_token_pool(self, last_hidden_states: Tensor, attention_mask: Tensor) -> Tensor:
+        """
+            Pool the last hidden states of the model
+            last_hidden_states: last hidden states of the model
+            attention_mask: attention mask of the model
+            
+            returns: pooled last hidden states
+        """
         left_padding = (attention_mask[:, -1].sum() == attention_mask.shape[0])
         if left_padding:
             return last_hidden_states[:, -1]
@@ -89,6 +103,12 @@ class PolicyRAG():
             return last_hidden_states[torch.arange(batch_size, device=last_hidden_states.device), sequence_lengths]
     
     def generate_embeddings(self, text:str) -> Tensor:
+        """
+            Generate embeddings for the given text using the BGE model
+            text: text to generate embeddings for
+            
+            returns: embeddings and shape of the embeddings
+        """
         doc_batch_dict = self.tokenizer(text, max_length=512, padding=True, truncation=True, return_tensors='pt')
         
         # Metadata for token counts
@@ -112,10 +132,12 @@ class PolicyRAG():
 
     def upload_doc(self, doc:str):
         """
-            Upload document to ElasticSearch
+            Upload a document to ElasticSearch
+            doc: document name to upload
+            
+            returns: None
         """
         try:
-            # pdf = "1549228"
             pdf_path = "./documents/" + doc
             text = self.pdf_to_text(doc)
             emb, shape = self.generate_embeddings(text=text)
@@ -131,8 +153,10 @@ class PolicyRAG():
     def upload_docs(self, path:str):
         """
             Upload document to ElasticSearch
+            path: path to the directory containing the documents
+            
+            returns: None
         """
-        # TODO: Error handling for each documents
         try:
             pdf_files = [f for f in os.listdir(path) if f.endswith('.pdf')]
             # print("PDF Files:", pdf_files)
@@ -167,6 +191,13 @@ class PolicyRAG():
         
 
     def search_docs(self, by:str, query:str):
+        """
+            Search documents in ElasticSearch DB based on the by parameter
+            by: text, embedding, hybrid
+            query: query string to search in the documents
+            
+            Returns: list of documents with their scores
+        """
         query_batch_dict = self.tokenizer(query, max_length=512, padding=True, truncation=True, return_tensors='pt')
         with torch.no_grad():
             query_outputs = self.model(**query_batch_dict)
@@ -175,6 +206,7 @@ class PolicyRAG():
         query_emb = query_emb.squeeze().cpu().numpy()
         query_emb = query_emb.tolist()
 
+        # Search query in ElasticSearch DB based in the by parameter
         if by == "text":
             results = self.elastic.search_by_text(query, top_k=10)
         elif by == "embedding":
@@ -187,7 +219,14 @@ class PolicyRAG():
         return results
     
     def generate_query_output(self, query:str, context:str):
-        # print(type(query), type(context))
+        """
+            Generate output for the given query and context using the Ollama model
+            query: query string to search in the documents
+            context: context string to search in the documents
+            
+            returns: response from the Ollama model
+        """
+        # Message prompt for the Ollama model
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": "Answer the following question on ASU Policies:" 

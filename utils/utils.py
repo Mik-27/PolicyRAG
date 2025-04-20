@@ -14,8 +14,12 @@ def checkUrlHealth(url):
             return 0
     except requests.exceptions.RequestException as e:
         raise SystemExit(e)
+
     
 def verifyPdf(pdf):
+    """
+        Verify whether the provided PDF file exists or not.
+    """
     try:
         if os.path.isfile("./documents/"+pdf+".pdf"):
             return True
@@ -23,6 +27,7 @@ def verifyPdf(pdf):
             raise FileNotFoundError("File does not exist.")
     except:
         raise FileNotFoundError("File does not exist.")
+  
     
 def trim_file_name(file_name):
     """

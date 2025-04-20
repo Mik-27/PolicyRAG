@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 import time
 
@@ -17,20 +17,17 @@ def chat():
 def handle_message(data):
     start = time.time()
     user_message = data['message']
-    # print(user_message, type(user_message))
     
     # Process the user message
     response = generate_chatbot_response(user_message)
     end = time.time()
     print("Time taken:", end-start)
-    # print(response)
     
     # Send the response back to the user
     emit('response', {'message': response})
 
 def generate_chatbot_response(message):
     docs = rag.search_docs(by="embedding", query=message)
-    # print([doc['score'] for doc in docs])
     
     # Use cummulative document scores to pass relevant documents to LLM chatbot
     cum_prob = 0.0
