@@ -12,6 +12,7 @@ from utils.utils import checkUrlHealth
 class WebScraper:
     def __init__(self, url):
         self.url = url
+        self.deployment = True
 
 
     def checkURL(self):
@@ -94,11 +95,19 @@ class WebScraper:
         """
         try:
             if checkUrlHealth(self.url):
-                service = Service(executable_path='./chromedriver/chromedriver.exe')
+                if self.deployment:
+                    service = Service(executable_path='/usr/bin/chromedriver')
+                else:
+                    service = Service(executable_path='./chromedriver/chromedriver.exe')
                 options = webdriver.ChromeOptions()
-                prefs = {"profile.default_content_settings.popups": 0,
-                    "download.default_directory": r"C:\Mihir\Projects\PolicyRAG\documents\\",
-                    "directory_upgrade": True}
+                if self.deployment:
+                    prefs = {"profile.default_content_settings.popups": 0,
+                        "download.default_directory": r"/app/documents",
+                        "directory_upgrade": True}
+                else:
+                    prefs = {"profile.default_content_settings.popups": 0,
+                        "download.default_directory": r"C:\Mihir\Projects\PolicyRAG\documents\\",
+                        "directory_upgrade": True}
                 options.add_experimental_option("prefs",prefs)
                 driver = webdriver.Chrome(service=service, options=options)
                 driver.get(self.url)

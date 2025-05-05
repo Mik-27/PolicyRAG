@@ -27,7 +27,7 @@ class PolicyRAG():
         self.tokenizer = AutoTokenizer.from_pretrained("BAAI/bge-large-en-v1.5", trust_remote_code=True)
         self.model = AutoModel.from_pretrained("BAAI/bge-large-en-v1.5", trust_remote_code=True)
         self.model.eval()
-        self.elastic = VectorDatabase("local")
+        self.elastic = VectorDatabase("deployment")
         ollama.host = os.environ.get("OLLAMA_HOST")
         self.total_token_length = 0
         self.record_count = 0
@@ -260,8 +260,8 @@ if __name__ == "__main__":
     # text = rag.pdf_to_text("1540244.pdf")
     # preprocessed_text = rag.preprocess_text(text)
     # print("Preprocessed Text:", preprocessed_text)
-    # rag.elastic.create_index(index_name="policy", dims=1024)
-    # rag.upload_docs(path="./documents/")
-    res = rag.search_docs(by="hybrid", query="Alternative Administrator")
-    print(res, len(res))
+    rag.elastic.create_index(index_name="policy", dims=1024)
+    rag.upload_docs(path="./documents/")
+    # res = rag.search_docs(by="hybrid", query="Alternative Administrator")
+    # print(res, len(res))
     # test_ollama_connection()

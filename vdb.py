@@ -34,6 +34,7 @@ class VectorDatabase:
             elif conn == 'deployment':
                 self.es = Elasticsearch(
                     "http://elasticsearch:9200",
+                    basic_auth=("elastic", os.environ['ELASTIC_PASSWORD']),
                     verify_certs=False,
                     request_timeout=30
                 )
@@ -136,7 +137,7 @@ class VectorDatabase:
         search_query = {
             "size": top_k,
             "query": {
-                "script_score": {
+                "script_score": { # Defines search as KNN
                     "query": {
                         "match_all": {}  # Retrieve all documents
                     },
@@ -256,7 +257,7 @@ class VectorDatabase:
 
 if __name__ == "__main__":
     elastic = VectorDatabase(conn="local")
-    # elastic.delete_all()
+    elastic.delete_all()
     # es = Elasticsearch("https://localhost:9200",
     #         basic_auth=("elastic", os.environ['ELASTIC_PASSWORD']),
     #         verify_certs=False,
