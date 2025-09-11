@@ -1,0 +1,52 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+    name: document-scraper-and-vectorizer
+    annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "policyrag"
+        vault.hashicorp.com/agent-inject-secret-config: "policyrag/data/config"
+        vault.hashicorp.com/agent-inject-template-config: |
+            {{- with secret "policyrag/data/config" -}}
+            export ELASTIC_PASSWORD="{{ .Data.data.ELASTIC_PASSWORD }}"
+            export HF_ACCESS_TOKEN="{{ .Data.data.HF_ACCESS_TOKEN }}"
+            export ELASTIC_API_KEY="{{ .Data.data.ELASTIC_API_KEY }}"
+            {{- end -}}
+spec:
+    activeDeadlineSeconds: 300 # 5 minutes timeout for the job
+    template:
+        spec:
+            containers:
+                - name: scraper-vectorizer
+                  image: policyrag:latest
+                  command: ["/bin/sh"]
+                  args:
+                      [
+                          "-c",
+                          "source /vault/secrets/config && python scrape_and_vectorize.py",
+                      ]
+                  resources:
+                      requests:
+                          memory: "2Gi" # Request more memory for embedding model
+                          cpu: "1"
+                      limits:
+                          memory: "4Gi"
+                          cpu: "2"
+                  volumeMounts:
+                      - name: documents
+                        mountPath: /app/documents
+                  env:
+                      - name: ELASTIC_HOST
+                        value: "elasticsearch-service"
+                      - name: ELASTIC_PORT
+                        value: "9200"
+                      - name: OLLAMA_HOST
+                        value: "http://ollama-service:11434"
+                      - name: DEPLOYMENT
+                        value: "true"
+            restartPolicy: Never
+            volumes:
+                - name: documents
+                  persistentVolumeClaim:
+                      claimName: policyrag-documents
+    backoffLimit: 2

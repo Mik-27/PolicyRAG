@@ -1,0 +1,16 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+    name: initialize-model
+spec:
+    template:
+        spec:
+            containers:
+                - name: model-initializer
+                  image: ollama/ollama:latest
+                  command: ["ollama", "pull", "gemma2:2b"]
+                  env:
+                      - name: OLLAMA_HOST
+                        value: "http://ollama:11434"
+            restartPolicy: Never
+    backoffLimit: 4

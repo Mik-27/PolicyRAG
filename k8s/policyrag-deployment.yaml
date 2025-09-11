@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: policyrag
+    labels:
+        app: policyrag
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: policyrag
+    template:
+        metadata:
+            labels:
+                app: policyrag
+            annotations:
+                vault.hashicorp.com/agent-inject: "true"
+                vault.hashicorp.com/role: "policyrag"
+                vault.hashicorp.com/agent-inject-secret-config: "policyrag/data/config"
+                vault.hashicorp.com/agent-inject-template-config: |
+                    {{- with secret "policyrag/data/config" -}}
+                    export ELASTIC_PASSWORD="{{ .Data.data.ELASTIC_PASSWORD }}"
+                    export HF_ACCESS_TOKEN="{{ .Data.data.HF_ACCESS_TOKEN }}"
+                    export ELASTIC_API_KEY="{{ .Data.data.ELASTIC_API_KEY }}"
+                    {{- end -}}
+        spec:
+            serviceAccountName: policyrag
+            containers:
+                - name: policyrag
+                  image: policyrag:latest
+                  imagePullPolicy: IfNotPresent
+                  command: ["/bin/sh"]
+                  args: ["-c", "source /vault/secrets/config && python app.py"]
+                  ports:
+                      - containerPort: 5000
+                  resources:
+                      requests:
+                          memory: "512Mi"
+                          cpu: "250m"
+                      limits:
+                          memory: "1Gi"
+                          cpu: "500m"
+                  volumeMounts:
+                      - name: documents
+                        mountPath: /app/documents
+            volumes:
+                - name: documents
+                  persistentVolumeClaim:
+                      claimName: policyrag-documents
