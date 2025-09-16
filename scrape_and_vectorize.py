@@ -1,10 +1,8 @@
-import os
 import logging
 import time
 from dotenv import load_dotenv
-from web_scraper import WebScraper
-from application import PolicyRAG
-from vdb import VectorDatabase
+from src.web_scraper import WebScraper
+from src.vdb import VectorDatabase
 
 # Configure logging
 logging.basicConfig(

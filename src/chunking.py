@@ -1,10 +1,3 @@
-"""
-Recursive chunking module using LangChain's RecursiveCharacterTextSplitter.
-
-This module wraps LangChain's text splitter to add metadata tracking and
-maintain consistency with the PolicyRAG application.
-"""
-
 import re
 from typing import List, Dict
 from transformers import AutoTokenizer
