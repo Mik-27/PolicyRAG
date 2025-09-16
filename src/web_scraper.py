@@ -7,7 +7,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-from utils.utils import checkUrlHealth
+from utils import checkUrlHealth
 
 class WebScraper:
     def __init__(self, url):
